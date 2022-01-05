@@ -39,8 +39,11 @@ import protobuf_unittest.UnittestProto.TestEmptyMessageWithExtensions;
 import protobuf_unittest.UnittestProto.TestPackedExtensions;
 import protobuf_unittest.UnittestProto.TestPackedTypes;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import junit.framework.TestCase;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * Tests related to unknown field handling.
@@ -57,7 +60,7 @@ public class UnknownFieldSetTest extends TestCase {
     unknownFields = emptyMessage.getUnknownFields();
   }
 
-  UnknownFieldSet.Field getField(String name) {
+  private UnknownFieldSet.Field getField(String name) {
     Descriptors.FieldDescriptor field = descriptor.findFieldByName(name);
     assertNotNull(field);
     return unknownFields.getField(field.getNumber());
@@ -170,6 +173,15 @@ public class UnknownFieldSetTest extends TestCase {
             .build();
 
     assertEquals("1: 1\n2: 2\n3: 3\n3: 4\n", destination.toString());
+  }
+
+  public void testAsMap() throws Exception {
+    UnknownFieldSet.Builder builder = UnknownFieldSet.newBuilder().mergeFrom(unknownFields);
+    Map<Integer, UnknownFieldSet.Field> mapFromBuilder = builder.asMap();
+    assertTrue(mapFromBuilder.size() > 0);
+    UnknownFieldSet fields = builder.build();
+    Map<Integer, UnknownFieldSet.Field> mapFromFieldSet = fields.asMap();
+    assertEquals(mapFromFieldSet, mapFromBuilder);
   }
 
   public void testClear() throws Exception {
