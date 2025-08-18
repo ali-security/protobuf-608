@@ -185,6 +185,7 @@ void SetPrimitiveVariables(const FieldDescriptor* descriptor,
   } else {
     (*variables)["null_check"] = "";
   }
+  (*variables)["repeated_add"] = (*variables)["name"] + "_.add";
   // TODO(birdo): Add @deprecated javadoc when generating javadoc is supported
   // by the proto compiler
   (*variables)["deprecation"] = descriptor->options().deprecated()
@@ -209,13 +210,6 @@ void SetPrimitiveVariables(const FieldDescriptor* descriptor,
   (*variables)["get_mutable_bit_builder"] = GenerateGetBit(builderBitIndex);
   (*variables)["set_mutable_bit_builder"] = GenerateSetBit(builderBitIndex);
   (*variables)["clear_mutable_bit_builder"] = GenerateClearBit(builderBitIndex);
-
-  // For repeated fields, one bit is used for whether the array is immutable
-  // in the parsing constructor.
-  (*variables)["get_mutable_bit_parser"] =
-      GenerateGetBitMutableLocal(builderBitIndex);
-  (*variables)["set_mutable_bit_parser"] =
-      GenerateSetBitMutableLocal(builderBitIndex);
 
   (*variables)["get_has_field_bit_from_local"] =
       GenerateGetBitFromLocal(builderBitIndex);
@@ -357,15 +351,10 @@ GenerateBuildingCode(io::Printer* printer) const {
 }
 
 void PrimitiveFieldGenerator::
-GenerateParsingCode(io::Printer* printer) const {
+GenerateBuilderParsingCode(io::Printer* printer) const {
   printer->Print(variables_,
-    "$set_has_field_bit_message$;\n"
-    "$name$_ = input.read$capitalized_type$();\n");
-}
-
-void PrimitiveFieldGenerator::
-GenerateParsingDoneCode(io::Printer* printer) const {
-  // noop for primitives.
+    "$name$_ = input.read$capitalized_type$();\n"
+                 "$set_has_field_bit_builder$;\n");
 }
 
 void PrimitiveFieldGenerator::
@@ -667,36 +656,23 @@ GenerateBuildingCode(io::Printer* printer) const {
 }
 
 void RepeatedPrimitiveFieldGenerator::
-GenerateParsingCode(io::Printer* printer) const {
+GenerateBuilderParsingCode(io::Printer* printer) const {
   printer->Print(variables_,
-    "if (!$get_mutable_bit_parser$) {\n"
-    "  $name$_ = new java.util.ArrayList<$boxed_type$>();\n"
-    "  $set_mutable_bit_parser$;\n"
-    "}\n"
-    "$name$_.add(input.read$capitalized_type$());\n");
+    "$type$ v = input.read$capitalized_type$();\n"
+    "ensure$capitalized_name$IsMutable();\n"
+    "$repeated_add$(v);\n");
 }
 
 void RepeatedPrimitiveFieldGenerator::
-GenerateParsingCodeFromPacked(io::Printer* printer) const {
+    GenerateBuilderParsingCodeFromPacked(io::Printer* printer) const {
   printer->Print(variables_,
     "int length = input.readRawVarint32();\n"
     "int limit = input.pushLimit(length);\n"
-    "if (!$get_mutable_bit_parser$ && input.getBytesUntilLimit() > 0) {\n"
-    "  $name$_ = new java.util.ArrayList<$boxed_type$>();\n"
-    "  $set_mutable_bit_parser$;\n"
-    "}\n"
+    "ensure$capitalized_name$IsMutable();\n"
     "while (input.getBytesUntilLimit() > 0) {\n"
-    "  $name$_.add(input.read$capitalized_type$());\n"
+    "  $repeated_add$(input.read$capitalized_type$());\n"
     "}\n"
     "input.popLimit(limit);\n");
-}
-
-void RepeatedPrimitiveFieldGenerator::
-GenerateParsingDoneCode(io::Printer* printer) const {
-  printer->Print(variables_,
-    "if ($get_mutable_bit_parser$) {\n"
-    "  $name$_ = java.util.Collections.unmodifiableList($name$_);\n"
-    "}\n");
 }
 
 void RepeatedPrimitiveFieldGenerator::

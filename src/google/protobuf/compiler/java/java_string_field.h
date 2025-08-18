@@ -52,23 +52,24 @@ class StringFieldGenerator : public FieldGenerator {
   ~StringFieldGenerator();
 
   // implements FieldGenerator ---------------------------------------
-  int GetNumBitsForMessage() const;
-  int GetNumBitsForBuilder() const;
-  void GenerateInterfaceMembers(io::Printer* printer) const;
-  void GenerateMembers(io::Printer* printer) const;
-  void GenerateBuilderMembers(io::Printer* printer) const;
-  void GenerateInitializationCode(io::Printer* printer) const;
-  void GenerateBuilderClearCode(io::Printer* printer) const;
-  void GenerateMergingCode(io::Printer* printer) const;
-  void GenerateBuildingCode(io::Printer* printer) const;
-  void GenerateParsingCode(io::Printer* printer) const;
-  void GenerateParsingDoneCode(io::Printer* printer) const;
-  void GenerateSerializationCode(io::Printer* printer) const;
-  void GenerateSerializedSizeCode(io::Printer* printer) const;
-  void GenerateFieldBuilderInitializationCode(io::Printer* printer) const;
-  void GenerateEqualsCode(io::Printer* printer) const;
-  void GenerateHashCode(io::Printer* printer) const;
-  string GetBoxedType() const;
+  int GetNumBitsForMessage() const override;
+  int GetNumBitsForBuilder() const override;
+  void GenerateInterfaceMembers(io::Printer* printer) const override;
+  void GenerateMembers(io::Printer* printer) const override;
+  void GenerateBuilderMembers(io::Printer* printer) const override;
+  void GenerateInitializationCode(io::Printer* printer) const override;
+  void GenerateBuilderClearCode(io::Printer* printer) const override;
+  void GenerateMergingCode(io::Printer* printer) const override;
+  void GenerateBuildingCode(io::Printer* printer) const override;
+  void GenerateBuilderParsingCode(io::Printer* printer) const override;
+  void GenerateSerializationCode(io::Printer* printer) const override;
+  void GenerateSerializedSizeCode(io::Printer* printer) const override;
+  void GenerateFieldBuilderInitializationCode(
+      io::Printer* printer) const override;
+  void GenerateEqualsCode(io::Printer* printer) const override;
+  void GenerateHashCode(io::Printer* printer) const override;
+
+  std::string GetBoxedType() const override;
 
  private:
   const FieldDescriptor* descriptor_;
@@ -86,24 +87,24 @@ class RepeatedStringFieldGenerator : public FieldGenerator {
   ~RepeatedStringFieldGenerator();
 
   // implements FieldGenerator ---------------------------------------
-  int GetNumBitsForMessage() const;
-  int GetNumBitsForBuilder() const;
-  void GenerateInterfaceMembers(io::Printer* printer) const;
-  void GenerateMembers(io::Printer* printer) const;
-  void GenerateBuilderMembers(io::Printer* printer) const;
-  void GenerateInitializationCode(io::Printer* printer) const;
-  void GenerateBuilderClearCode(io::Printer* printer) const;
-  void GenerateMergingCode(io::Printer* printer) const;
-  void GenerateBuildingCode(io::Printer* printer) const;
-  void GenerateParsingCode(io::Printer* printer) const;
-  void GenerateParsingCodeFromPacked(io::Printer* printer) const;
-  void GenerateParsingDoneCode(io::Printer* printer) const;
-  void GenerateSerializationCode(io::Printer* printer) const;
-  void GenerateSerializedSizeCode(io::Printer* printer) const;
-  void GenerateFieldBuilderInitializationCode(io::Printer* printer) const;
-  void GenerateEqualsCode(io::Printer* printer) const;
-  void GenerateHashCode(io::Printer* printer) const;
-  string GetBoxedType() const;
+  int GetNumBitsForMessage() const override;
+  int GetNumBitsForBuilder() const override;
+  void GenerateInterfaceMembers(io::Printer* printer) const override;
+  void GenerateMembers(io::Printer* printer) const override;
+  void GenerateBuilderMembers(io::Printer* printer) const override;
+  void GenerateInitializationCode(io::Printer* printer) const override;
+  void GenerateBuilderClearCode(io::Printer* printer) const override;
+  void GenerateMergingCode(io::Printer* printer) const override;
+  void GenerateBuildingCode(io::Printer* printer) const override;
+  void GenerateBuilderParsingCode(io::Printer* printer) const override;
+  void GenerateSerializationCode(io::Printer* printer) const override;
+  void GenerateSerializedSizeCode(io::Printer* printer) const override;
+  void GenerateFieldBuilderInitializationCode(
+      io::Printer* printer) const override;
+  void GenerateEqualsCode(io::Printer* printer) const override;
+  void GenerateHashCode(io::Printer* printer) const override;
+
+  std::string GetBoxedType() const override;
 
  private:
   const FieldDescriptor* descriptor_;

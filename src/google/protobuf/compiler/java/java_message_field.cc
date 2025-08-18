@@ -86,13 +86,6 @@ void SetMessageVariables(const FieldDescriptor* descriptor,
   (*variables)["set_mutable_bit_builder"] = GenerateSetBit(builderBitIndex);
   (*variables)["clear_mutable_bit_builder"] = GenerateClearBit(builderBitIndex);
 
-  // For repeated fields, one bit is used for whether the array is immutable
-  // in the parsing constructor.
-  (*variables)["get_mutable_bit_parser"] =
-      GenerateGetBitMutableLocal(builderBitIndex);
-  (*variables)["set_mutable_bit_parser"] =
-      GenerateSetBitMutableLocal(builderBitIndex);
-
   (*variables)["get_has_field_bit_from_local"] =
       GenerateGetBitFromLocal(builderBitIndex);
   (*variables)["set_has_field_bit_to_local"] =
@@ -384,34 +377,20 @@ GenerateBuildingCode(io::Printer* printer) const {
 }
 
 void MessageFieldGenerator::
-GenerateParsingCode(io::Printer* printer) const {
-  printer->Print(variables_,
-    "$type$.Builder subBuilder = null;\n"
-    "if ($get_has_field_bit_message$) {\n"
-    "  subBuilder = $name$_.toBuilder();\n"
-    "}\n");
-
+GenerateBuilderParsingCode(io::Printer* printer) const {
   if (GetType(descriptor_) == FieldDescriptor::TYPE_GROUP) {
     printer->Print(variables_,
-      "$name$_ = input.readGroup($number$, $type$.PARSER,\n"
-      "    extensionRegistry);\n");
+                   "input.readGroup($number$,\n"
+                   "    get$capitalized_name$FieldBuilder().getBuilder(),\n"
+                   "    extensionRegistry);\n"
+                   "$set_has_field_bit_builder$;\n");
   } else {
     printer->Print(variables_,
-      "$name$_ = input.readMessage($type$.PARSER, extensionRegistry);\n");
+                   "input.readMessage(\n"
+                   "    get$capitalized_name$FieldBuilder().getBuilder(),\n"
+                   "    extensionRegistry);\n"
+                   "$set_has_field_bit_builder$;\n");
   }
-
-  printer->Print(variables_,
-    "if (subBuilder != null) {\n"
-    "  subBuilder.mergeFrom($name$_);\n"
-    "  $name$_ = subBuilder.buildPartial();\n"
-    "}\n");
-  printer->Print(variables_,
-    "$set_has_field_bit_message$;\n");
-}
-
-void MessageFieldGenerator::
-GenerateParsingDoneCode(io::Printer* printer) const {
-  // noop for messages.
 }
 
 void MessageFieldGenerator::
@@ -850,10 +829,12 @@ GenerateInitializationCode(io::Printer* printer) const {
 void RepeatedMessageFieldGenerator::
 GenerateBuilderClearCode(io::Printer* printer) const {
   PrintNestedBuilderCondition(printer,
-    "$name$_ = java.util.Collections.emptyList();\n"
-    "$clear_mutable_bit_builder$;\n",
+    "$name$_ = java.util.Collections.emptyList();\n",
 
+    "$name$_ = null;\n"
     "$name$Builder_.clear();\n");
+
+printer->Print(variables_, "$clear_mutable_bit_builder$;\n");
 }
 
 void RepeatedMessageFieldGenerator::
@@ -906,29 +887,24 @@ GenerateBuildingCode(io::Printer* printer) const {
 }
 
 void RepeatedMessageFieldGenerator::
-GenerateParsingCode(io::Printer* printer) const {
-  printer->Print(variables_,
-    "if (!$get_mutable_bit_parser$) {\n"
-    "  $name$_ = new java.util.ArrayList<$type$>();\n"
-    "  $set_mutable_bit_parser$;\n"
-    "}\n");
-
+GenerateBuilderParsingCode(io::Printer* printer) const {
   if (GetType(descriptor_) == FieldDescriptor::TYPE_GROUP) {
     printer->Print(variables_,
-      "$name$_.add(input.readGroup($number$, $type$.PARSER,\n"
-      "    extensionRegistry));\n");
+                   "$type$ m =\n"
+                   "    input.readGroup($number$,\n"
+                   "        $type$.PARSER,\n"
+                   "        extensionRegistry);\n");
   } else {
     printer->Print(variables_,
-      "$name$_.add(input.readMessage($type$.PARSER, extensionRegistry));\n");
+                   "$type$ m =\n"
+                   "    input.readMessage(\n"
+                   "        $type$.PARSER,\n"
+                   "        extensionRegistry);\n");
   }
-}
-
-void RepeatedMessageFieldGenerator::
-GenerateParsingDoneCode(io::Printer* printer) const {
-  printer->Print(variables_,
-    "if ($get_mutable_bit_parser$) {\n"
-    "  $name$_ = java.util.Collections.unmodifiableList($name$_);\n"
-    "}\n");
+  PrintNestedBuilderCondition(printer,
+                              "ensure$capitalized_name$IsMutable();\n"
+                              "$name$_.add(m);\n",
+                              "$name$Builder_.addMessage(m);\n");
 }
 
 void RepeatedMessageFieldGenerator::

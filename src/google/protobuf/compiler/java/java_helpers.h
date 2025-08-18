@@ -53,6 +53,7 @@ extern const char kThinSeparator[];
 // "fooBarBaz" or "FooBarBaz", respectively.
 string UnderscoresToCamelCase(const FieldDescriptor* field);
 string UnderscoresToCapitalizedCamelCase(const FieldDescriptor* field);
+string UnderscoresToCapitalizedCamelCase(const char* field);
 
 // Similar, but for method names.  (Typically, this merely has the effect
 // of lower-casing the first letter of the name.)
@@ -162,7 +163,6 @@ inline bool HasGenericServices(const FileDescriptor *file) {
          file->options().optimize_for() != FileOptions::LITE_RUNTIME &&
          file->options().java_generic_services();
 }
-
 
 // Methods for shared bitfields.
 
