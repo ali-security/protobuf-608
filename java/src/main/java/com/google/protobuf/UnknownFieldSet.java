@@ -57,7 +57,15 @@ import java.util.TreeMap;
  * @author kenton@google.com Kenton Varda
  */
 public final class UnknownFieldSet implements MessageLite {
-  private UnknownFieldSet() {}
+  private final TreeMap<Integer, Field> fields;
+
+  /**
+   * Construct an {@code UnknownFieldSet} around the given map.
+   */
+  UnknownFieldSet(TreeMap<Integer, Field> fields) {
+    this.fields = fields;
+  }
+
 
   /** Create a new {@link Builder}. */
   public static Builder newBuilder() {
@@ -80,16 +88,7 @@ public final class UnknownFieldSet implements MessageLite {
     return defaultInstance;
   }
   private static final UnknownFieldSet defaultInstance =
-    new UnknownFieldSet(Collections.<Integer, Field>emptyMap());
-
-  /**
-   * Construct an {@code UnknownFieldSet} around the given map.  The map is
-   * expected to be immutable.
-   */
-  private UnknownFieldSet(final Map<Integer, Field> fields) {
-    this.fields = fields;
-  }
-  private Map<Integer, Field> fields;
+    new UnknownFieldSet(new TreeMap<Integer, Field>());
 
   @Override
   public boolean equals(final Object other) {
@@ -102,12 +101,16 @@ public final class UnknownFieldSet implements MessageLite {
 
   @Override
   public int hashCode() {
+    if (fields.isEmpty()) { // avoid allocation of iterator.
+      // This optimization may not be helpful but it is needed for the allocation tests to pass.
+      return 0;
+    }
     return fields.hashCode();
   }
 
   /** Get a map of fields in the set by number. */
   public Map<Integer, Field> asMap() {
-    return fields;
+    return (Map<Integer, Field>) fields.clone();
   }
 
   /** Check if the given field number is present in the set. */
@@ -188,7 +191,7 @@ public final class UnknownFieldSet implements MessageLite {
 
   public void writeDelimitedTo(OutputStream output) throws IOException {
     final CodedOutputStream codedOutput = CodedOutputStream.newInstance(output);
-    codedOutput.writeRawVarint32(getSerializedSize());
+    codedOutput.writeUInt32NoTag(getSerializedSize());
     writeTo(codedOutput);
     codedOutput.flush();
   }
@@ -196,8 +199,10 @@ public final class UnknownFieldSet implements MessageLite {
   /** Get the number of bytes required to encode this set. */
   public int getSerializedSize() {
     int result = 0;
-    for (final Map.Entry<Integer, Field> entry : fields.entrySet()) {
-      result += entry.getValue().getSerializedSize(entry.getKey());
+    if (!fields.isEmpty()) {
+      for (final Map.Entry<Integer, Field> entry : fields.entrySet()) {
+        result += entry.getValue().getSerializedSize(entry.getKey());
+      }
     }
     return result;
   }
@@ -281,65 +286,46 @@ public final class UnknownFieldSet implements MessageLite {
     // This constructor should never be called directly (except from 'create').
     private Builder() {}
 
-    private Map<Integer, Field> fields;
-
-    // Optimization:  We keep around a builder for the last field that was
-    //   modified so that we can efficiently add to it multiple times in a
-    //   row (important when parsing an unknown repeated field).
-    private int lastFieldNumber;
-    private Field.Builder lastField;
+    private TreeMap<Integer, Field.Builder> fieldBuilders = new TreeMap<Integer, Field.Builder>();
 
     private static Builder create() {
-      Builder builder = new Builder();
-      builder.reinitialize();
-      return builder;
+      return new Builder();
     }
 
     /**
-     * Get a field builder for the given field number which includes any
-     * values that already exist.
+     * Get a field builder for the given field number which includes any values that already exist.
      */
-    private Field.Builder getFieldBuilder(final int number) {
-      if (lastField != null) {
-        if (number == lastFieldNumber) {
-          return lastField;
-        }
-        // Note:  addField() will reset lastField and lastFieldNumber.
-        addField(lastFieldNumber, lastField.build());
-      }
+    private Field.Builder getFieldBuilder(int number) {
       if (number == 0) {
         return null;
       } else {
-        final Field existing = fields.get(number);
-        lastFieldNumber = number;
-        lastField = Field.newBuilder();
-        if (existing != null) {
-          lastField.mergeFrom(existing);
+        Field.Builder builder = fieldBuilders.get(number);
+        if (builder == null) {
+          builder = Field.newBuilder();
+          fieldBuilders.put(number, builder);
         }
-        return lastField;
+        return builder;
       }
     }
 
     /**
      * Build the {@link UnknownFieldSet} and return it.
-     *
-     * <p>Once {@code build()} has been called, the {@code Builder} will no
-     * longer be usable.  Calling any method after {@code build()} will result
-     * in undefined behavior and can cause a {@code NullPointerException} to be
-     * thrown.
      */
+    @Override
     public UnknownFieldSet build() {
-      getFieldBuilder(0);  // Force lastField to be built.
-      final UnknownFieldSet result;
-      if (fields.isEmpty()) {
+      UnknownFieldSet result;
+      if (fieldBuilders.isEmpty()) {
         result = getDefaultInstance();
       } else {
-        result = new UnknownFieldSet(Collections.unmodifiableMap(fields));
+        TreeMap<Integer, Field> fields = new TreeMap<Integer, Field>();
+        for (Map.Entry<Integer, Field.Builder> entry : fieldBuilders.entrySet()) {
+          fields.put(entry.getKey(), entry.getValue().build());
+        }
+        result = new UnknownFieldSet(fields);
       }
-      fields = null;
       return result;
     }
-
+    
     public UnknownFieldSet buildPartial() {
       // No required fields, so this is the same as build().
       return build();
@@ -347,24 +333,38 @@ public final class UnknownFieldSet implements MessageLite {
 
     @Override
     public Builder clone() {
-      getFieldBuilder(0);  // Force lastField to be built.
-      return UnknownFieldSet.newBuilder().mergeFrom(
-          new UnknownFieldSet(fields));
+      Builder clone = UnknownFieldSet.newBuilder();
+      for (Map.Entry<Integer, Field.Builder> entry : fieldBuilders.entrySet()) {
+        Integer key = entry.getKey();
+        Field.Builder value = entry.getValue();
+        clone.fieldBuilders.put(key, value.clone());
+      }
+      return clone;
     }
 
     public UnknownFieldSet getDefaultInstanceForType() {
       return UnknownFieldSet.getDefaultInstance();
     }
 
-    private void reinitialize() {
-      fields = Collections.emptyMap();
-      lastFieldNumber = 0;
-      lastField = null;
-    }
 
     /** Reset the builder to an empty set. */
     public Builder clear() {
-      reinitialize();
+      fieldBuilders = new TreeMap<Integer, Field.Builder>();
+      return this;
+    }
+
+    /**
+     * Clear fields from the set with a given field number.
+     *
+     * @throws IllegalArgumentException if number is not positive
+     */
+    public Builder clearField(int number) {
+      if (number <= 0) {
+        throw new IllegalArgumentException(number + " is not a valid field number.");
+      }
+      if (fieldBuilders.containsKey(number)) {
+        fieldBuilders.remove(number);
+      }
       return this;
     }
 
@@ -387,8 +387,8 @@ public final class UnknownFieldSet implements MessageLite {
      * number already exists, the two are merged.
      */
     public Builder mergeField(final int number, final Field field) {
-      if (number == 0) {
-        throw new IllegalArgumentException("Zero is not a valid field number.");
+      if (number <= 0) {
+        throw new IllegalArgumentException(number + " is not a valid field number.");
       }
       if (hasField(number)) {
         getFieldBuilder(number).mergeFrom(field);
@@ -407,38 +407,29 @@ public final class UnknownFieldSet implements MessageLite {
      * encountered.
      */
     public Builder mergeVarintField(final int number, final int value) {
-      if (number == 0) {
-        throw new IllegalArgumentException("Zero is not a valid field number.");
+      if (number <= 0) {
+        throw new IllegalArgumentException(number + " is not a valid field number.");
       }
       getFieldBuilder(number).addVarint(value);
       return this;
     }
 
     /** Check if the given field number is present in the set. */
-    public boolean hasField(final int number) {
-      if (number == 0) {
-        throw new IllegalArgumentException("Zero is not a valid field number.");
-      }
-      return number == lastFieldNumber || fields.containsKey(number);
+    public boolean hasField(int number) {
+      return fieldBuilders.containsKey(number);
     }
 
     /**
-     * Add a field to the {@code UnknownFieldSet}.  If a field with the same
-     * number already exists, it is removed.
+     * Add a field to the {@code UnknownFieldSet}. If a field with the same number already exists,
+     * it is removed.
+     *
+     * @throws IllegalArgumentException if number is not positive
      */
-    public Builder addField(final int number, final Field field) {
-      if (number == 0) {
-        throw new IllegalArgumentException("Zero is not a valid field number.");
+    public Builder addField(int number, Field field) {
+      if (number <= 0) {
+        throw new IllegalArgumentException(number + " is not a valid field number.");
       }
-      if (lastField != null && lastFieldNumber == number) {
-        // Discard this.
-        lastField = null;
-        lastFieldNumber = 0;
-      }
-      if (fields.isEmpty()) {
-        fields = new TreeMap<Integer,Field>();
-      }
-      fields.put(number, field);
+      fieldBuilders.put(number, Field.newBuilder(field));
       return this;
     }
 
@@ -447,7 +438,10 @@ public final class UnknownFieldSet implements MessageLite {
      * fields are added, the changes may or may not be reflected in this map.
      */
     public Map<Integer, Field> asMap() {
-      getFieldBuilder(0);  // Force lastField to be built.
+      TreeMap<Integer, Field> fields = new TreeMap<Integer, Field>();
+      for (Map.Entry<Integer, Field.Builder> entry : fieldBuilders.entrySet()) {
+        fields.put(entry.getKey(), entry.getValue().build());
+      }
       return Collections.unmodifiableMap(fields);
     }
 
@@ -809,16 +803,51 @@ public final class UnknownFieldSet implements MessageLite {
      * <p>Use {@link Field#newBuilder()} to construct a {@code Builder}.
      */
     public static final class Builder {
-      // This constructor should never be called directly (except from 'create').
-      private Builder() {}
+      // This constructor should only be called directly from 'create' and 'clone'.
+      private Builder() {
+        result = new Field();
+      }
 
       private static Builder create() {
         Builder builder = new Builder();
-        builder.result = new Field();
         return builder;
       }
 
       private Field result;
+
+      @Override
+      public Builder clone() {
+        Field copy = new Field();
+        if (result.varint == null) {
+          copy.varint = null;
+        } else {
+          copy.varint = new ArrayList<Long>(result.varint);
+        }
+        if (result.fixed32 == null) {
+          copy.fixed32 = null;
+        } else {
+          copy.fixed32 = new ArrayList<Integer>(result.fixed32);
+        }
+        if (result.fixed64 == null) {
+          copy.fixed64 = null;
+        } else {
+          copy.fixed64 = new ArrayList<Long>(result.fixed64);
+        }
+        if (result.lengthDelimited == null) {
+          copy.lengthDelimited = null;
+        } else {
+          copy.lengthDelimited = new ArrayList<ByteString>(result.lengthDelimited);
+        }
+        if (result.group == null) {
+          copy.group = null;
+        } else {
+          copy.group = new ArrayList<UnknownFieldSet>(result.group);
+        }
+
+        Builder clone = new Builder();
+        clone.result = copy;
+        return clone;
+      }
 
       /**
        * Build the field.  After {@code build()} has been called, the
@@ -827,36 +856,35 @@ public final class UnknownFieldSet implements MessageLite {
        * {@code NullPointerException} to be thrown.
        */
       public Field build() {
+        Field built = new Field();
         if (result.varint == null) {
-          result.varint = Collections.emptyList();
+          built.varint = Collections.emptyList();
         } else {
-          result.varint = Collections.unmodifiableList(result.varint);
+          built.varint = Collections.unmodifiableList(result.varint);
         }
         if (result.fixed32 == null) {
-          result.fixed32 = Collections.emptyList();
+          built.fixed32 = Collections.emptyList();
         } else {
-          result.fixed32 = Collections.unmodifiableList(result.fixed32);
+          built.fixed32 = Collections.unmodifiableList(result.fixed32);
         }
         if (result.fixed64 == null) {
-          result.fixed64 = Collections.emptyList();
+          built.fixed64 = Collections.emptyList();
         } else {
-          result.fixed64 = Collections.unmodifiableList(result.fixed64);
+          built.fixed64 = Collections.unmodifiableList(result.fixed64);
         }
         if (result.lengthDelimited == null) {
-          result.lengthDelimited = Collections.emptyList();
+          built.lengthDelimited = Collections.emptyList();
         } else {
-          result.lengthDelimited =
+          built.lengthDelimited =
             Collections.unmodifiableList(result.lengthDelimited);
         }
         if (result.group == null) {
-          result.group = Collections.emptyList();
+          built.group = Collections.emptyList();
         } else {
-          result.group = Collections.unmodifiableList(result.group);
+          built.group = Collections.unmodifiableList(result.group);
         }
 
-        final Field returnMe = result;
-        result = null;
-        return returnMe;
+        return built;
       }
 
       /** Discard the field's contents. */

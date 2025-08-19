@@ -39,6 +39,7 @@ import protobuf_unittest.UnittestProto.TestEmptyMessageWithExtensions;
 import junit.framework.TestCase;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -191,6 +192,15 @@ public class UnknownFieldSetTest extends TestCase {
       "3: 3\n" +
       "3: 4\n",
       destination.toString());
+  }
+
+  public void testAsMap() throws Exception {
+    UnknownFieldSet.Builder builder = UnknownFieldSet.newBuilder().mergeFrom(unknownFields);
+    Map<Integer, UnknownFieldSet.Field> mapFromBuilder = builder.asMap();
+    assertTrue(mapFromBuilder.size() > 0);
+    UnknownFieldSet fields = builder.build();
+    Map<Integer, UnknownFieldSet.Field> mapFromFieldSet = fields.asMap();
+    assertEquals(mapFromFieldSet, mapFromBuilder);
   }
 
   public void testClear() throws Exception {

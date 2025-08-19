@@ -140,6 +140,7 @@ EXTRA_DIST =                                                                 \
   java/src/test/java/com/google/protobuf/TestUtil.java                       \
   java/src/test/java/com/google/protobuf/TextFormatTest.java                 \
   java/src/test/java/com/google/protobuf/UnknownFieldSetTest.java            \
+  java/src/test/java/com/google/protobuf/UnknownFieldSetPerformanceTest.java \
   java/src/test/java/com/google/protobuf/UnmodifiableLazyStringListTest.java \
   java/src/test/java/com/google/protobuf/WireFormatTest.java                 \
   java/src/test/java/com/google/protobuf/multiple_files_test.proto           \
