@@ -48,6 +48,8 @@ import java.util.List;
  * @author kenton@google.com Kenton Varda
  */
 public final class CodedInputStream {
+  private static volatile int defaultRecursionLimit = 100;
+
   /**
    * Create a new CodedInputStream wrapping the given InputStream.
    */
@@ -165,7 +167,16 @@ public final class CodedInputStream {
   public void skipMessage() throws IOException {
     while (true) {
       final int tag = readTag();
-      if (tag == 0 || !skipField(tag)) {
+      if (tag == 0) {
+        return;
+      }
+      if (recursionDepth >= recursionLimit) {
+        throw InvalidProtocolBufferException.recursionLimitExceeded();
+      }
+      ++recursionDepth;
+      boolean fieldSkipped = skipField(tag);
+      --recursionDepth;
+      if (!fieldSkipped) {
         return;
       }
     }

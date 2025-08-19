@@ -39,6 +39,7 @@ import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;
 import java.io.InputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * Unit test for {@link CodedInputStream}.
@@ -46,6 +47,170 @@ import java.io.IOException;
  * @author kenton@google.com Kenton Varda
  */
 public class CodedInputStreamTest extends TestCase {
+  private static final int GROUP_TAP = WireFormat.makeTag(3, WireFormat.WIRETYPE_START_GROUP);
+
+  private static final byte[] NESTING_SGROUP = generateSGroupTags();
+
+  private static final byte[] NESTING_SGROUP_WITH_INITIAL_BYTES = generateSGroupTagsForMapField();
+
+  private static byte[] generateSGroupTags() {
+    byte[] bytes = new byte[100000];
+    Arrays.fill(bytes, (byte) GROUP_TAP);
+    return bytes;
+  }
+
+  private static byte[] generateSGroupTagsForMapField() {
+    byte[] initialBytes = {18, 1, 75, 26, (byte) 198, (byte) 154, 12};
+    byte[] result = new byte[initialBytes.length + NESTING_SGROUP.length];
+    System.arraycopy(initialBytes, 0, result, 0, initialBytes.length);
+    System.arraycopy(NESTING_SGROUP, 0, result, initialBytes.length, NESTING_SGROUP.length);
+    return result;
+  }
+
+
+  public void testMaliciousRecursion_unknownFields() throws Exception {
+    CodedInputStream input = CodedInputStream.newInstance(NESTING_SGROUP);
+    try {
+      while (!input.isAtEnd()) {
+        int tag = input.readTag();
+        if (tag == 0) break;
+        input.skipField(tag);
+      }
+      fail("Should have thrown an exception!");
+    } catch (InvalidProtocolBufferException e) {
+      assertTrue(e.getMessage().contains("Protocol message had too many levels of nesting") ||
+                e.getMessage().contains("Protocol message was too large"));
+    }
+  }
+
+  public void testMaliciousRecursion_skippingUnknownField() throws Exception {
+    CodedInputStream input = CodedInputStream.newInstance(NESTING_SGROUP);
+    try {
+      while (!input.isAtEnd()) {
+        int tag = input.readTag();
+        if (tag == 0) break;
+        input.skipField(tag);
+      }
+      fail("Should have thrown an exception!");
+    } catch (InvalidProtocolBufferException e) {
+      assertTrue(e.getMessage().contains("Protocol message had too many levels of nesting") ||
+                e.getMessage().contains("Protocol message was too large"));
+    }
+  }
+
+  public void testMaliciousSGroupTagsWithMapField_fromInputStream() throws Exception {
+    CodedInputStream input = CodedInputStream.newInstance(new ByteArrayInputStream(NESTING_SGROUP_WITH_INITIAL_BYTES));
+    try {
+      while (!input.isAtEnd()) {
+        int tag = input.readTag();
+        if (tag == 0) break;
+        input.skipField(tag);
+      }
+      fail("Should have thrown an exception!");
+    } catch (InvalidProtocolBufferException e) {
+      assertTrue(e.getMessage(), 
+                e.getMessage().contains("While parsing a protocol message, the input ended unexpectedly in the middle of a field."));
+    }
+  }
+
+  public void testMaliciousSGroupTags_inputStream_skipMessage() throws Exception {
+    ByteArrayInputStream inputSteam = new ByteArrayInputStream(NESTING_SGROUP);
+    CodedInputStream input = CodedInputStream.newInstance(inputSteam);
+
+    try {
+      while (!input.isAtEnd()) {
+        int tag = input.readTag();
+        if (tag == 0) break;
+        input.skipField(tag);
+      }
+      fail("Should have thrown an exception!");
+    } catch (InvalidProtocolBufferException e) {
+      assertTrue(e.getMessage().contains("Protocol message had too many levels of nesting") ||
+                e.getMessage().contains("Protocol message was too large"));
+    }
+  }
+
+  public void testMaliciousSGroupTagsWithMapField_fromByteArray() throws Exception {
+    CodedInputStream input = CodedInputStream.newInstance(NESTING_SGROUP_WITH_INITIAL_BYTES);
+    try {
+      while (!input.isAtEnd()) {
+        int tag = input.readTag();
+        if (tag == 0) break;
+        input.skipField(tag);
+      }
+      fail("Should have thrown an exception!");
+    } catch (InvalidProtocolBufferException e) {
+      assertTrue(e.getMessage().contains("the input ended unexpectedly in the middle of a field") ||
+                e.getMessage().contains("Protocol message had too many levels of nesting") ||
+                e.getMessage().contains("Protocol message was too large"));
+    }
+  }
+
+  public void testMaliciousSGroupTags_arrayDecoder_skipMessage() throws Exception {
+    CodedInputStream input = CodedInputStream.newInstance(NESTING_SGROUP);
+
+    try {
+      while (!input.isAtEnd()) {
+        int tag = input.readTag();
+        if (tag == 0) break;
+        input.skipField(tag);
+      }
+      fail("Should have thrown an exception!");
+    } catch (InvalidProtocolBufferException e) {
+      assertTrue(e.getMessage().contains("Protocol message had too many levels of nesting") ||
+                e.getMessage().contains("Protocol message was too large"));
+    }
+  }
+
+  public void testMaliciousSGroupTagsWithMapField_fromByteBuffer() throws Exception {
+    CodedInputStream input = CodedInputStream.newInstance(NESTING_SGROUP_WITH_INITIAL_BYTES);
+    try {
+      while (!input.isAtEnd()) {
+        int tag = input.readTag();
+        if (tag == 0) break;
+        input.skipField(tag);
+      }
+      fail("Should have thrown an exception!");
+    } catch (InvalidProtocolBufferException e) {
+      assertTrue(e.getMessage().contains("the input ended unexpectedly in the middle of a field") ||
+                e.getMessage().contains("Protocol message had too many levels of nesting") ||
+                e.getMessage().contains("Protocol message was too large"));
+    }
+  }
+
+  public void testMaliciousSGroupTags_byteBuffer_skipMessage() throws Exception {
+    CodedInputStream input = CodedInputStream.newInstance(NESTING_SGROUP);
+
+    try {
+      while (!input.isAtEnd()) {
+        int tag = input.readTag();
+        if (tag == 0) break;
+        input.skipField(tag);
+      }
+      fail("Should have thrown an exception!");
+    } catch (InvalidProtocolBufferException e) {
+      assertTrue(e.getMessage().contains("Protocol message had too many levels of nesting") ||
+                e.getMessage().contains("Protocol message was too large"));
+    }
+  }
+
+  public void testMaliciousSGroupTags_iterableByteBuffer() throws Exception {
+    CodedInputStream input = CodedInputStream.newInstance(NESTING_SGROUP);
+
+    try {
+      while (!input.isAtEnd()) {
+        int tag = input.readTag();
+        if (tag == 0) break;
+        input.skipField(tag);
+      }
+      fail("Should have thrown an exception!");
+    } catch (InvalidProtocolBufferException e) {
+      assertTrue(e.getMessage().contains("Protocol message had too many levels of nesting") ||
+                e.getMessage().contains("Protocol message was too large"));
+    }
+  }
+
+
   /**
    * Helper to construct a byte array from a bunch of bytes.  The inputs are
    * actually ints so that I can use hex notation and not get stupid errors
