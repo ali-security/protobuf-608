@@ -106,6 +106,10 @@ string UnderscoresToCapitalizedCamelCase(const FieldDescriptor* field) {
   return UnderscoresToCamelCaseImpl(FieldName(field), true);
 }
 
+string UnderscoresToCapitalizedCamelCase(const char* field) {
+  return UnderscoresToCamelCaseImpl(field, true);
+}
+
 string UnderscoresToCamelCase(const MethodDescriptor* method) {
   return UnderscoresToCamelCaseImpl(method->name(), false);
 }

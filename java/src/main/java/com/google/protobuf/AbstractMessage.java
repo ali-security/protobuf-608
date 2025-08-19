@@ -360,6 +360,10 @@ public abstract class AbstractMessage extends AbstractMessageLite
       return (BuilderType) this;
     }
 
+    protected UnknownFieldSet.Builder getUnknownFieldSetBuilder() {
+      return UnknownFieldSet.newBuilder(getUnknownFields());
+    }
+    
     /** helper method to handle {@code builder} and {@code extensions}. */
     private static void addRepeatedField(
         Message.Builder builder,

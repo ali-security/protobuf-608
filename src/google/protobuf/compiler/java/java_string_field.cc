@@ -98,13 +98,6 @@ void SetPrimitiveVariables(const FieldDescriptor* descriptor,
   (*variables)["set_mutable_bit_builder"] = GenerateSetBit(builderBitIndex);
   (*variables)["clear_mutable_bit_builder"] = GenerateClearBit(builderBitIndex);
 
-  // For repeated fields, one bit is used for whether the array is immutable
-  // in the parsing constructor.
-  (*variables)["get_mutable_bit_parser"] =
-      GenerateGetBitMutableLocal(builderBitIndex);
-  (*variables)["set_mutable_bit_parser"] =
-      GenerateSetBitMutableLocal(builderBitIndex);
-
   (*variables)["get_has_field_bit_from_local"] =
       GenerateGetBitFromLocal(builderBitIndex);
   (*variables)["set_has_field_bit_to_local"] =
@@ -338,15 +331,10 @@ GenerateBuildingCode(io::Printer* printer) const {
 }
 
 void StringFieldGenerator::
-GenerateParsingCode(io::Printer* printer) const {
+GenerateBuilderParsingCode(io::Printer* printer) const {
   printer->Print(variables_,
-    "$set_has_field_bit_message$;\n"
-    "$name$_ = input.readBytes();\n");
-}
-
-void StringFieldGenerator::
-GenerateParsingDoneCode(io::Printer* printer) const {
-  // noop for strings.
+    "$name$_ = input.readBytes();\n"
+    "$set_has_field_bit_builder$;\n");
 }
 
 void StringFieldGenerator::
@@ -611,36 +599,11 @@ GenerateBuildingCode(io::Printer* printer) const {
 }
 
 void RepeatedStringFieldGenerator::
-GenerateParsingCode(io::Printer* printer) const {
+GenerateBuilderParsingCode(io::Printer* printer) const {
   printer->Print(variables_,
-    "if (!$get_mutable_bit_parser$) {\n"
-    "  $name$_ = new com.google.protobuf.LazyStringArrayList();\n"
-    "  $set_mutable_bit_parser$;\n"
-    "}\n"
-    "$name$_.add(input.readBytes());\n");
-}
-
-void RepeatedStringFieldGenerator::
-GenerateParsingCodeFromPacked(io::Printer* printer) const {
-  printer->Print(variables_,
-    "int length = input.readRawVarint32();\n"
-    "int limit = input.pushLimit(length);\n"
-    "if (!$get_mutable_bit_parser$ && input.getBytesUntilLimit() > 0) {\n"
-    "  $name$_ = new com.google.protobuf.LazyStringArrayList();\n"
-    "  $set_mutable_bit_parser$;\n"
-    "}\n"
-    "while (input.getBytesUntilLimit() > 0) {\n"
-    "  $name$.add(input.read$capitalized_type$());\n"
-    "}\n"
-    "input.popLimit(limit);\n");
-}
-
-void RepeatedStringFieldGenerator::
-GenerateParsingDoneCode(io::Printer* printer) const {
-  printer->Print(variables_,
-    "if ($get_mutable_bit_parser$) {\n"
-    "  $name$_ = new com.google.protobuf.UnmodifiableLazyStringList($name$_);\n"
-    "}\n");
+    "com.google.protobuf.ByteString bs = input.readBytes();\n"
+    "ensure$capitalized_name$IsMutable();\n"
+    "$name$_.add(bs);\n");
 }
 
 void RepeatedStringFieldGenerator::

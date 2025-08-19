@@ -114,6 +114,9 @@ public abstract class GeneratedMessageLite extends AbstractMessageLite
         int tag) throws IOException {
       return input.skipField(tag);
     }
+
+    protected final void onChanged() {
+    }
   }
 
   // =================================================================

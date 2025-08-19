@@ -91,6 +91,11 @@ class MessageGenerator {
   void GenerateCommonBuilderMethods(io::Printer* printer);
   void GenerateDescriptorMethods(io::Printer* printer);
   void GenerateBuilderParsingMethods(io::Printer* printer);
+  void GenerateBuilderFieldParsingCases(io::Printer* printer);
+  void GenerateBuilderFieldParsingCase(io::Printer* printer,
+                                       const FieldDescriptor* field);
+  void GenerateBuilderPackedFieldParsingCase(io::Printer* printer,
+                                             const FieldDescriptor* field);
   void GenerateIsInitialized(io::Printer* printer,
       UseMemoization useMemoization);
   void GenerateEqualsAndHashCode(io::Printer* printer);
