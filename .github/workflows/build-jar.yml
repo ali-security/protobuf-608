@@ -26,7 +26,7 @@ jobs:
         container_id=$(docker create protobuf-java:latest)
         
         # Copy the JAR file from the container
-        docker cp "$container_id:/app/java/target/protobuf-java-3.7.1+sp1.jar" ./protobuf-java-3.7.1+sp1.jar
+        docker cp "$container_id:/app/java/core/target/protobuf-java-3.7.1+sp1.jar" ./protobuf-java-3.7.1+sp1.jar
         docker cp "$container_id:/usr/lib/libprotobuf-lite.a" ./libprotobuf-lite.a
         docker cp "$container_id:/usr/lib/libprotobuf-lite.la" ./libprotobuf-lite.la
         docker cp "$container_id:/usr/lib/libprotobuf-lite.so" ./libprotobuf-lite.so
