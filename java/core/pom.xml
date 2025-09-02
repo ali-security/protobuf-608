@@ -9,6 +9,7 @@
 
   <artifactId>protobuf-java</artifactId>
   <packaging>bundle</packaging>
+  <version>3.7.1+sp1</version>
 
   <name>Protocol Buffers [Core]</name>
   <description>

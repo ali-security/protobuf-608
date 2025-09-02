@@ -1,0 +1,59 @@
+name: Build Protobuf Java JAR
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+          submodules: recursive
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build Docker image
+      run: |
+        docker build -t protobuf-java:latest .
+        
+    - name: Extract JAR from Docker container
+      run: |
+        # Create a temporary container to extract the JAR
+        container_id=$(docker create protobuf-java:latest)
+        
+        # Copy the JAR file from the container
+        docker cp "$container_id:/app/java/target/protobuf-java-3.7.1+sp1.jar" ./protobuf-java-3.7.1+sp1.jar
+        docker cp "$container_id:/usr/lib/libprotobuf-lite.a" ./libprotobuf-lite.a
+        docker cp "$container_id:/usr/lib/libprotobuf-lite.la" ./libprotobuf-lite.la
+        docker cp "$container_id:/usr/lib/libprotobuf-lite.so" ./libprotobuf-lite.so
+        docker cp "$container_id:/usr/lib/libprotobuf.a" ./libprotobuf.a
+        docker cp "$container_id:/usr/lib/libprotobuf.la" ./libprotobuf.la
+        docker cp "$container_id:/usr/lib/libprotobuf.so" ./libprotobuf.so
+        docker cp "$container_id:/usr/lib/libprotoc.a" ./libprotoc.a
+        docker cp "$container_id:/usr/lib/libprotoc.la" ./libprotoc.la
+        docker cp "$container_id:/usr/lib/libprotoc.so" ./libprotoc.so
+        docker cp "$container_id:/app/src/protoc" ./protoc
+        zip -r protoc.zip libprotobuf-lite.a libprotobuf-lite.la libprotobuf-lite.so libprotobuf.a libprotobuf.la libprotobuf.so libprotoc.a libprotoc.la libprotoc.so protoc
+
+        
+        # Clean up the container
+        docker rm "$container_id"
+        
+        # Verify the JAR was extracted
+        ls -la protobuf-java-3.7.1+sp1.jar
+        
+    - name: Upload JAR artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: protobuf-java-jar
+        path: protobuf-java-3.7.1+sp1.jar
+    
+    - name: Upload native artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: protobuf-protoc
+        path: protoc.zip

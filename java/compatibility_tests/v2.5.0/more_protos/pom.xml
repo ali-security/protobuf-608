@@ -20,7 +20,7 @@
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
-      <version>${more_protos.protobuf.version}</version>
+      <version>3.7.1+sp1</version>
     </dependency>
     <dependency>
       <groupId>com.google.protobuf.compatibility</groupId>
